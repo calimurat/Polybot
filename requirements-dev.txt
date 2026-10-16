@@ -1,0 +1,6 @@
+# Development tools — not needed to run the bot, not installed in Docker.
+-r requirements.txt
+pytest>=7.0                # Testing framework
+pytest-cov>=4.0            # Code coverage
+black>=23.0                # Code formatter
+flake8>=5.0                # Linting

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polybot Dashboard</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-net:      #2a78d6;
+    --series-gross:    #eda100;
+    --status-good:     #0ca30c;
+    --status-critical: #d03b3b;
+    --status-warning:  #fab219;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-net:      #3987e5;
+      --series-gross:    #c98500;
+      --status-good:     #0ca30c;
+      --status-critical: #e66767;
+      --status-warning:  #fab219;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-net:      #3987e5;
+    --series-gross:    #c98500;
+    --status-good:     #0ca30c;
+    --status-critical: #e66767;
+    --status-warning:  #fab219;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 16px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+  h1 { font-size: 20px; margin: 0; font-weight: 700; }
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-secondary);
+    padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface-1);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--status-good); }
+  .dot.stale { background: var(--status-warning); }
+  .dot.dead { background: var(--text-muted); }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .live-panel { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; }
+  .live-panel .field { display: flex; flex-direction: column; gap: 2px; }
+  .live-panel .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .live-panel .value { font-size: 14px; color: var(--text-primary); font-weight: 600; }
+  .live-panel .value.market { max-width: 360px; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .stat-tile .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  .stat-tile .value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-tile .value.pos { color: var(--status-good); }
+  .stat-tile .value.neg { color: var(--status-critical); }
+
+  .chart-legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); }
+  .chart-legend .item { display: flex; align-items: center; gap: 6px; }
+  .chart-legend .swatch { width: 12px; height: 2px; border-radius: 1px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: right; font-weight: 600; color: var(--text-muted);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;
+    padding: 8px 10px; border-bottom: 1px solid var(--gridline);
+    position: sticky; top: 0; background: var(--surface-1);
+  }
+  thead th:first-child, thead th:nth-child(2) { text-align: left; }
+  tbody td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tbody td:first-child, tbody td:nth-child(2) { text-align: left; }
+  tbody tr:hover { background: color-mix(in srgb, var(--text-primary) 4%, transparent); }
+  .pos { color: var(--status-good); }
+  .neg { color: var(--status-critical); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.win { background: color-mix(in srgb, var(--status-good) 16%, transparent); color: var(--status-good); }
+  .badge.loss { background: color-mix(in srgb, var(--status-critical) 16%, transparent); color: var(--status-critical); }
+  .badge.void { background: color-mix(in srgb, var(--text-muted) 16%, transparent); color: var(--text-muted); }
+
+  .table-scroll { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+  .empty-state { color: var(--text-muted); font-size: 13px; padding: 24px; text-align: center; }
+  .section-title { font-size: 14px; font-weight: 700; margin: 0 0 12px 0; }
+
+  #tooltip {
+    position: fixed; pointer-events: none; z-index: 10;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; color: var(--text-primary);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    opacity: 0; transition: opacity 0.1s;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Polybot Dashboard</h1>
+    <div class="live-badge"><span class="dot" id="live-dot"></span><span id="live-text">bağlanıyor…</span></div>
+  </header>
+
+  <div class="card live-panel" id="live-panel">
+    <div class="field"><span class="label">Cycle</span><span class="value" id="live-cycle">—</span></div>
+    <div class="field"><span class="label">Market</span><span class="value market" id="live-market">—</span></div>
+    <div class="field"><span class="label">Açık Pozisyon</span><span class="value" id="live-position">Yok</span></div>
+  </div>
+
+  <div class="stats-grid" id="stats-grid"></div>
+
+  <div class="card">
+    <p class="section-title">Kümülatif PnL (Net vs Brüt)</p>
+    <div class="chart-legend">
+      <span class="item"><span class="swatch" style="background:var(--series-net)"></span>Net PnL</span>
+      <span class="item"><span class="swatch" style="background:var(--series-gross)"></span>Brüt PnL</span>
+    </div>
+    <div id="chart-container"></div>
+    <p style="font-size:11px;color:var(--text-muted);margin:8px 0 0 0">
+      Fee verisi olmayan eski işlemlerde brüt = net kabul edilir (fee=0 varsayımı) — iki çizgi bu yüzden geçmişte üst üste görünebilir.
+    </p>
+  </div>
+
+  <div class="card">
+    <p class="section-title">Tüm İşlemler</p>
+    <div class="table-scroll" id="table-container"></div>
+  </div>
+
+</div>
+<div id="tooltip"></div>
+
+<script>
+const API = {
+  summary: '/api/summary',
+  trades: '/api/trades?limit=1000',
+  live: '/api/live',
+};
+
+function fmtMoney(v) {
+  if (v === null || v === undefined) return '—';
+  const sign = v < 0 ? '-' : '';
+  return sign + '$' + Math.abs(v).toFixed(2);
+}
+function fmtPct(v) {
+  if (v === null || v === undefined) return '—';
+  return v.toFixed(2) + '%';
+}
+function fmtPrice(v) {
+  if (v === null || v === undefined) return '—';
+  return v.toFixed(4);
+}
+function fmtTime(unixSec) {
+  if (!unixSec) return '—';
+  const d = new Date(unixSec * 1000);
+  return d.toLocaleString('tr-TR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+function fmtDuration(sec) {
+  if (sec === null || sec === undefined) return '—';
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return `${m}dk ${s}sn`;
+}
+
+async function fetchJSON(url) {
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+  return res.json();
+}
+
+function renderStats(summary) {
+  const tiles = [
+    { label: 'Toplam İşlem', value: summary.total_trades, cls: '' },
+    { label: 'Win Rate', value: summary.win_rate.toFixed(1) + '%', cls: '' },
+    { label: 'Net PnL', value: fmtMoney(summary.total_pnl), cls: summary.total_pnl >= 0 ? 'pos' : 'neg' },
+    { label: 'Brüt PnL', value: fmtMoney(summary.total_gross_pnl), cls: '', note: summary.fee_coverage_note },
+    { label: 'Toplam Fee', value: fmtMoney(summary.total_fee), cls: 'neg', note: summary.fee_coverage_note },
+    { label: 'Toplam Slippage', value: fmtMoney(summary.total_slippage_cost), cls: 'neg', note: summary.slippage_coverage_note },
+  ];
+  document.getElementById('stats-grid').innerHTML = tiles.map(t => `
+    <div class="card stat-tile">
+      <div class="label">${t.label}</div>
+      <div class="value ${t.cls}">${t.value}</div>
+      ${t.note ? `<div style="font-size:10px;color:var(--text-muted);margin-top:4px">⚠ ${t.note}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// The server reads the cycle / market from the tail of bot.log, where they
+// appear once per 5-minute window; keep the last value seen rather than "—".
+let lastCycle = null, lastMarket = null;
+
+function renderLive(live) {
+  if (live.cycle != null) lastCycle = live.cycle;
+  if (live.market_question != null) lastMarket = live.market_question;
+  document.getElementById('live-cycle').textContent = lastCycle ?? '—';
+  document.getElementById('live-market').textContent = lastMarket ?? '—';
+
+  const posEl = document.getElementById('live-position');
+  if (live.open_position) {
+    const p = live.open_position;
+    posEl.textContent = `${p.signal_type} @ ${fmtPrice(p.entry_price)} (${p.size} share)`;
+  } else {
+    posEl.textContent = 'Yok';
+  }
+
+  const dot = document.getElementById('live-dot');
+  const text = document.getElementById('live-text');
+  const secs = live.seconds_since_log;
+  dot.className = 'dot';
+  if (secs === null || secs === undefined) {
+    dot.classList.add('dead');
+    text.textContent = 'log bulunamadı';
+  } else if (secs < 20) {
+    text.textContent = 'canlı';
+  } else if (secs < 120) {
+    dot.classList.add('stale');
+    text.textContent = `${Math.round(secs)}sn önce`;
+  } else {
+    dot.classList.add('dead');
+    text.textContent = 'bot durmuş olabilir';
+  }
+}
+
+function renderTable(trades) {
+  const container = document.getElementById('table-container');
+  if (!trades.length) {
+    container.innerHTML = '<div class="empty-state">Henüz kapanmış işlem yok.</div>';
+    return;
+  }
+  const rows = trades.map(t => {
+    const badgeCls = t.status === 'win' ? 'win' : (t.status === 'loss' ? 'loss' : 'void');
+    const badgeText = t.status === 'win' ? 'WIN' : (t.status === 'loss' ? 'LOSS' : 'VOID');
+    const pnlCls = t.pnl >= 0 ? 'pos' : 'neg';
+    return `
+      <tr>
+        <td>${fmtTime(t.entry_time)}</td>
+        <td>${t.signal_type ?? '—'}</td>
+        <td>${fmtPrice(t.entry_price)}</td>
+        <td>${fmtPrice(t.exit_price)}</td>
+        <td>${t.size}</td>
+        <td>${fmtMoney(t.gross_pnl)}</td>
+        <td>${fmtMoney(t.fee)}</td>
+        <td>${fmtMoney(t.slippage_cost)}</td>
+        <td class="${pnlCls}">${fmtMoney(t.pnl)}</td>
+        <td class="${pnlCls}">${fmtPct(t.pnl_percent)}</td>
+        <td><span class="badge ${badgeCls}">${badgeText}</span></td>
+        <td>${fmtDuration(t.duration_seconds)}</td>
+      </tr>
+    `;
+  }).join('');
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Zaman</th><th>Yön</th><th>Entry</th><th>Exit</th><th>Size</th>
+          <th>Brüt</th><th>Fee</th><th>Slippage</th><th>Net PnL</th><th>PnL%</th><th>Sonuç</th><th>Süre</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderChart(trades) {
+  const container = document.getElementById('chart-container');
+  if (trades.length < 2) {
+    container.innerHTML = '<div class="empty-state">Grafik için en az 2 işlem gerekli.</div>';
+    return;
+  }
+  // Oldest -> newest for a left-to-right cumulative line.
+  const ordered = [...trades].reverse();
+  let cumNet = 0, cumGross = 0;
+  const points = ordered.map((t, i) => {
+    cumNet += t.pnl;
+    cumGross += (t.gross_pnl ?? t.pnl);
+    return { i, net: cumNet, gross: cumGross };
+  });
+
+  const W = container.clientWidth || 1000, H = 260, PAD = { l: 56, r: 16, t: 16, b: 28 };
+  const allVals = points.flatMap(p => [p.net, p.gross]);
+  const minV = Math.min(0, ...allVals), maxV = Math.max(0, ...allVals);
+  const range = (maxV - minV) || 1;
+
+  const x = i => PAD.l + (i / (points.length - 1)) * (W - PAD.l - PAD.r);
+  const y = v => H - PAD.b - ((v - minV) / range) * (H - PAD.t - PAD.b);
+
+  const pathFor = key => points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p[key]).toFixed(1)}`).join(' ');
+
+  const zeroY = y(0);
+  const gridLines = [];
+  const steps = 4;
+  for (let s = 0; s <= steps; s++) {
+    const v = minV + (range * s / steps);
+    gridLines.push(`<line x1="${PAD.l}" y1="${y(v)}" x2="${W-PAD.r}" y2="${y(v)}" stroke="var(--gridline)" stroke-width="1"/>`);
+    gridLines.push(`<text x="${PAD.l - 8}" y="${y(v)+4}" text-anchor="end" font-size="10" fill="var(--text-muted)">${fmtMoney(v)}</text>`);
+  }
+
+  const svg = `
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="overflow:visible">
+      ${gridLines.join('')}
+      <line x1="${PAD.l}" y1="${zeroY}" x2="${W-PAD.r}" y2="${zeroY}" stroke="var(--baseline)" stroke-width="1"/>
+      <path d="${pathFor('gross')}" fill="none" stroke="var(--series-gross)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="${pathFor('net')}" fill="none" stroke="var(--series-net)" stroke-width="2" stroke-linejoin="round"/>
+      ${points.map((p, i) => `<circle class="hover-pt" data-i="${i}" cx="${x(i)}" cy="${y(p.net)}" r="8" fill="transparent"/>`).join('')}
+    </svg>
+  `;
+  container.innerHTML = svg;
+
+  const tooltip = document.getElementById('tooltip');
+  container.querySelectorAll('.hover-pt').forEach(el => {
+    el.addEventListener('mousemove', (e) => {
+      const i = +el.dataset.i;
+      const p = points[i];
+      const t = ordered[i];
+      tooltip.innerHTML = `<b>${fmtTime(t.entry_time)}</b><br>Net: ${fmtMoney(p.net)}<br>Brüt: ${fmtMoney(p.gross)}`;
+      tooltip.style.left = (e.clientX + 12) + 'px';
+      tooltip.style.top = (e.clientY + 12) + 'px';
+      tooltip.style.opacity = 1;
+    });
+    el.addEventListener('mouseleave', () => { tooltip.style.opacity = 0; });
+  });
+}
+
+async function refresh() {
+  try {
+    const [summary, trades, live] = await Promise.all([
+      fetchJSON(API.summary), fetchJSON(API.trades), fetchJSON(API.live)
+    ]);
+    renderStats(summary);
+    renderTable(trades);
+    renderChart(trades);
+    renderLive(live);
+  } catch (e) {
+    document.getElementById('live-text').textContent = 'sunucuya bağlanılamadı';
+    document.getElementById('live-dot').className = 'dot dead';
+    console.error(e);
+  }
+}
+
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>

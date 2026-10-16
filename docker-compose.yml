@@ -1,0 +1,27 @@
+# Run:     docker compose up -d --build
+# Logs:    docker compose logs -f
+# Stop:    docker compose stop        (waits up to 40 s for a clean shutdown)
+# Status:  docker compose exec polybot python market_recorder.py --status
+services:
+  polybot:
+    build: .
+    container_name: polybot
+    restart: unless-stopped          # back up after a crash or a server reboot
+    init: true                       # reaps the recorder child process cleanly
+    volumes:
+      - ./:/app                      # code + bot_trades.db + market_tape.db + parquet/ + logs stay on the host
+    ports:
+      # Dashboard, no password. By default only this machine can open it
+      # (127.0.0.1) — on a laptop, the local network cannot. On the AWS
+      # server, put DASHBOARD_BIND=0.0.0.0 in .env so the server's IP opens
+      # it, and allow port 8765 in the security group to your own IP only:
+      # that rule is then the only thing protecting it. Docker-published
+      # ports bypass the host firewall (ufw), so the security group is what counts.
+      - "${DASHBOARD_BIND:-127.0.0.1}:8765:8765"
+    # Bot, recorder and the last Parquet sync need more than Docker's default 10 s.
+    stop_grace_period: 40s
+    logging:                         # the bot writes its own bot.log; keep Docker's copy small
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
